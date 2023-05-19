@@ -1,4 +1,3 @@
-
 #!/usr/bin/python3
 """
 This module contains the principal application
@@ -39,6 +38,6 @@ Swagger(app)
 if __name__ == "__main__":
 
     host = getenv('HBNB_API_HOST', default='0.0.0.0')
-    port = getenv('HBNB_API_PORT', default=5002)
+    port = getenv('HBNB_API_PORT', default=5000)
 
     app.run(host, int(port), threaded=True)
