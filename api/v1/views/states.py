@@ -1,71 +1,70 @@
 #!/usr/bin/python3
-"""State module"""
-from api.v1.views import app_views
-from flask import jsonify, abort, request, make_response
+"""The state view module"""
+
+
+from flask import jsonify, abort, make_response, request
 from models import storage
+from api.v1.views import app_views
 from models.state import State
-from flasgger.utils import swag_from
 
 
 @app_views.route('/states', methods=['GET'], strict_slashes=False)
-@swag_from('documentation/state/get.yml', methods=['GET'])
-def get_all():
-    """ get all by id """
-    all_list = [obj.to_dict() for obj in storage.all(State).values()]
-    return jsonify(all_list)
+def fetchStates():
+    """Returns a list of all State objects in JSON format"""
+    allStates = storage.all(State)
+    states = []
+    for state in allStates.values():
+        states.append(state.to_dict())
+    return jsonify(states)
 
 
-@app_views.route('/states/<string:state_id>', methods=['GET'],
-                 strict_slashes=False)
-@swag_from('documentation/state/get_id.yml', methods=['GET'])
-def get_method_state(state_id):
-    """ get state by id"""
+@app_views.route('/states/<string:state_id>', methods=['GET'], strict_slashes=False)
+def fetchState(state_id):
+    """Retrieves an instance of a state by state_id"""
     state = storage.get(State, state_id)
-    if state is None:
+    if state:
+        return jsonify(state.to_dict())
+    else:
         abort(404)
-    return jsonify(state.to_dict())
 
 
-@app_views.route('/states/<string:state_id>', methods=['DELETE'],
-                 strict_slashes=False)
-@swag_from('documentation/state/delete.yml', methods=['DELETE'])
-def del_method(state_id):
-    """ delete state by id"""
+@app_views.route('/states/<string:state_id>', strict_slashes=False, methods=['DELETE'])
+def deleteState(state_id):
+    """Deletes the state with id = state_id"""
     state = storage.get(State, state_id)
-    if state is None:
+    if not state:
         abort(404)
-    state.delete()
-    storage.save()
-    return jsonify({})
+    storage.delete(state)
+    return make_response(jsonify({}), 200)
 
 
-@app_views.route('/states/', methods=['POST'],
-                 strict_slashes=False)
-@swag_from('documentation/state/post.yml', methods=['POST'])
-def create_obj():
-    """ create new instance """
-    if not request.get_json():
+@app_views.route('/states', strict_slashes=False, methods=['POST'])
+def createState():
+    """Creates a new state object"""
+    stateInfo = request.get_json()
+    if not stateInfo or type(stateInfo) != dict:
         return make_response(jsonify({"error": "Not a JSON"}), 400)
-    if 'name' not in request.get_json():
+    elif "name" not in stateInfo:
         return make_response(jsonify({"error": "Missing name"}), 400)
-    js = request.get_json()
-    obj = State(**js)
-    obj.save()
-    return jsonify(obj.to_dict()), 201
+
+    newState = State(**stateInfo)
+    newState.save()
+    return make_response(jsonify(newState.to_dict()), 201)
 
 
-@app_views.route('/states/<string:state_id>', methods=['PUT'],
-                 strict_slashes=False)
-@swag_from('documentation/state/put.yml', methods=['PUT'])
-def post_method(state_id):
-    """ post method """
-    if not request.get_json():
-        return make_response(jsonify({"error": "Not a JSON"}), 400)
-    obj = storage.get(State, state_id)
-    if obj is None:
+@app_views.route('/states/<string:state_id>', strict_slashes=False, methods=['PUT'])
+def updateState(state_id):
+    """Updates the state with the specified state_id"""
+    state = storage.get(State, state_id)
+    stateInfo = request.get_json()
+    if not state:
         abort(404)
-    for key, value in request.get_json().items():
-        if key not in ['id', 'created_at', 'updated']:
-            setattr(obj, key, value)
-    storage.save()
-    return jsonify(obj.to_dict())
+    elif not stateInfo or type(stateInfo) != dict:
+        return make_response(jsonify({"error": "Not a JSON"}), 400)
+
+    ignoredAttr = ['id', 'created_at', 'updated_at']
+    for key, value in stateInfo.items():
+        if key not in ignoredAttr:
+            setattr(state, key, value)
+    state.save()
+    return make_response(jsonify(state.to_dict()), 200)
